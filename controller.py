@@ -7,7 +7,7 @@ from kucoin.client import WsToken
 from kucoin.ws_client import KucoinWsClient
 
 from okx import OKX
-from strategry import MarketMaker
+from strategry import CrossExchangeMarketMaker
 import settings
 
 last_time = time.time()
@@ -23,14 +23,21 @@ async def handle_data(data):
     # strategy
     #@TODO: now the data processing step is not too time consuming.
     # if it not very time consuming, process it with another process/ at other computer
-    bid, ask = mm.calculate(data)
+    
+    maker_buy, maker_sell = mm.calculate_maker_order(data)
 
     # @TODO: make these two function to be run asynchronously
     # send order at marker exchange
-    print(formated, 'request submited')
-    okx.buy('ETH-USDT', bid['price'], bid['size'])
-    okx.sell('ETH-USDT', ask['price'], ask['size'])
+    print(formated, 'request submited', data)
+    okx.buy('ETH-USDT', maker_buy['price'], maker_buy['size'])
+    okx.sell('ETH-USDT', maker_sell['price'], maker_sell['size'])
 
+    taker_buy, taker_sell = mm.calculate_taker_order(data)
+    # TODO: kucoin API
+    # TODO: only send taker ordre after maker order are filled
+    # ku.sell('ETH-USDT', taker_sell['price'], taker_sell['price'])
+    # ku.buy('ETH-USDT', taker_buy['price'], taker_buy['price'])
+    
 
     # @TODO: check if marker exchange order is filled, send order to taker exchange
     pass
@@ -61,7 +68,7 @@ if __name__ == "__main__":
     # @TODO: what if there are multiple exchange?
     okx = OKX(settings.apikey, settings.secretkey, settings.passphrase)
     # @TODO: what if there are multiple strategy?
-    mm = MarketMaker('ETH-USDT', 0.01)
+    mm = CrossExchangeMarketMaker('ETH-USDT', 0.01)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
 
